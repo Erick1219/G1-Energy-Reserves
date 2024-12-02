@@ -1,0 +1,109 @@
+---
+title: "Natural Lacerate Totals"
+author: "Erick White"
+date: "2023-07-10"
+output: pdf_document
+---
+#looking at the total lacerate data over time throughout the whole collection
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(scales)
+library(emmeans)
+
+#Total natural lacerate data
+
+View(Natural_Lacerate_collection_log)
+# Convert the "Date" column to a proper date format
+Natural_Lacerate_collection_log$Date <- as.Date(Natural_Lacerate_collection_log$Date, format = "%d-%b")
+
+# Define the dates you want to show on the x-axis
+selected_dates <- c("15-May", "29-May", "12-Jun", "26-Jun", "10-Jul")
+selected_dates <- as.Date(selected_dates, format = "%d-%b")
+
+# Create a scatter plot with selected dates on the x-axis
+ggplot(Natural_Lacerate_collection_log, aes(x = Date, y = Total, color = `Symbiotic State`)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, aes(group = `Symbiotic State`)) +
+  labs(x = "Date", y = "Total Lacerates Collected") +
+  scale_x_date(breaks = selected_dates, labels = date_format("%d-%b")) +
+  scale_color_manual(values = c("Sym" = "orange", "Apo" = "darkgrey")) +
+  theme_minimal()
+
+
+#Statistics for total lacerate data
+Lacerates<-lm(Total~Date, data=Natural_Lacerate_collection_log)
+summary(Lacerates)
+
+# Create separate linear regression models for "Sym" and "Apo"
+lm_sym <- lm(Total ~ Date, data = subset(Natural_Lacerate_collection_log, `Symbiotic State` == "Sym"))
+lm_apo <- lm(Total ~ Date, data = subset(Natural_Lacerate_collection_log, `Symbiotic State` == "Apo"))
+
+# Print the regression summary for "Sym"
+summary(lm_sym)
+
+# Print the regression summary for "Apo"
+summary(lm_apo)
+
+# Perform hypothesis tests on the coefficients
+coef_test <- coef(summary(lm_sym))
+coef_test2 <- coef(summary(lm_apo))
+
+p_value <- coef_test["Date", "Pr(>|t|)"]
+p_value2 <- coef_test2["Date", "Pr(>|t|)"]
+# Display the p-value
+p_value
+p_value2
+```
+`
+#looking at how the different bins of ages affected the number of lacerates collected i.e. is it better to wait a few days or collect every day
+
+```{r}
+filtered_data <- Natural_Lacerate_collection_log %>%
+  filter(`Age` %in% c("0-1", "0-2", "0-3")) %>%
+  filter(!`Lacerates` %in% boxplot.stats(`Lacerates`)$out)
+
+ggplot(filtered_data, aes(x = `Age`, y = `Lacerates`, fill = `Symbiotic State`)) +
+  geom_boxplot(outlier.shape = NA) +
+  labs(x = "Lacerate Age", y = "Lacerate Number", fill = "Symbiotic State") +
+  scale_x_discrete(labels = function(x) gsub("-", "-", x)) +
+  scale_fill_manual(values = c("Sym" = "orange", "Apo" = "darkgrey")) +
+  theme_minimal()
+
+# Perform ANOVA
+anova_result <- aov(`Lacerates` ~ `Age` * `Symbiotic State`, data = filtered_data)
+
+# Compute pairwise comparisons with emmeans
+emmeans_result <- emmeans(anova_result, ~ `Age` * `Symbiotic State`)
+
+# Perform Tukey adjustment for multiple comparisons
+tukey_result <- contrast(emmeans_result, method = "tukey")
+
+# Print ANOVA results
+print(summary(anova_result))
+
+# Print Tukey test results
+print(tukey_result)
+
+```
+
+there was only one time point for the 0-4 and 0-5 group, so those results are outliers and may not reflect actual patterns. I decided to remove those groups.
+
+#bar graph figure
+```{r}
+#Barplot grapj
+averages <- Natural_Lacerate_collection_log %>%
+  group_by(`Lacerate Age`, `Symbiotic State`) %>%
+  summarize(Average = mean(`Lacerate Number`))
+averages
+
+ggplot(averages, aes(x = `Lacerate Age`, y = `Average`, fill = `Symbiotic State`)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Age of Lacerates in Days", y = "Average Number of Lacerates Collected") +
+  scale_fill_manual(values = c("Sym" = "orange", "Apo" = "darkgrey")) +
+  theme_minimal()
+
+```
+

@@ -1,0 +1,918 @@
+---
+title: "Feeding Regimen Experiment"
+author: "Erick White"
+date: "2023-11-02"
+output: pdf_document
+---
+#Total Energy Reserves between artificial and naural lacerates by symbiotic state
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(scales)
+library(emmeans)
+library(dplyr)
+
+#View the Data
+library(readxl)
+Feeding_Regimen_111_2 <- read_excel("C:/Users/erick/OneDrive - Oregon State University/Desktop/Experiments/Nat vs. Art and Feeding Regimen 2023-24/Feeding Regimen 111-2.xlsx", 
+    sheet = "total energy reserves")
+View(Feeding_Regimen_111_2)
+Feeding_Regimen_111_2
+attach((Feeding_Regimen_111_2))
+View(Feeding_Regimen_111_2)
+
+#averages for carbs
+averages <- Feeding_Regimen_111_2 %>%
+  group_by(`Feeding Condition`, `Light Condition`, `Symbiotic State`) %>%
+  summarise(average_value = mean(`Total Carbs (ug/mL) perLacerate`))
+averages
+View(averages)
+# heatmap of all Carb data
+ggplot(Feeding_Regimen_111_2, aes(x=`Light Condition`, y=`Feeding Condition`,  fill =`Total Carbs (ug/mL) perLacerate`)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "blue") +
+  facet_grid(. ~ `Symbiotic State`) +  # Add facets based on Symbiotic_State
+  labs(title = "Heatmap of Total Carbs") +
+  theme_minimal()
+
+
+# Create a new variable combining Feeding Condition, Symbiotic State, and Light Condition
+averages$combined_condition <- with(averages, paste(`Feeding Condition`, `Symbiotic State`, `Light Condition`, sep = "-"))
+
+# Define a custom color palette for each of the 8 groups
+custom_colors <- c(
+  "Fed-Sym-Dark" = "#FF7256",    #  Coral1 for Fed-Sym-Dark
+  "Fed-Sym-Light" = "#8B4500",   # Dark Orange4 for Fed-Sym-Light
+  "Starved-Sym-Dark" = "#FFA500",# Orange1 for Starved-Sym-Dark
+  "Starved-Sym-Light" = "#FF7F00",# Dark Orange1 for Starved-Sym-Light
+  "Fed-Apo-Dark" = "#FF82AB",    #palevioletred1  for Fed-Apo-Dark
+  "Fed-Apo-Light" = "#8B475D",   # palevioletred4 for Fed-Apo-Light
+  "Starved-Apo-Dark" = "#FFBBFF",#plum1  for Starved-Apo-Dark
+  "Starved-Apo-Light" = "#8B668B" #plum4  for Starved-Apo-Light
+)
+
+
+# Plot with adjusted border thickness for Light Condition
+bubble_plot <- ggplot(averages, aes(x = `Feeding Condition`, y = `Light Condition`, size = average_value)) +
+  geom_point(aes(color = combined_condition, 
+                 fill = ifelse(`Light Condition` == "Dark", combined_condition, "white"), 
+                 stroke = ifelse(`Light Condition` == "Light", 2.5, 1.5)),  # Thicker border for Light Condition
+             shape = 21) +  # shape = 21 allows for filled or empty points
+  scale_size_continuous(range = c(3, 10)) +
+  
+  # Use custom color palette for the combined condition
+  scale_color_manual(values = custom_colors) +
+  
+  # Ensure fill color for Dark is the same as the border, and Light is white
+  scale_fill_manual(values = c(custom_colors, "white" = "white"), guide = "none") +  # Remove Lighting Condition legend
+  
+  facet_grid(. ~ `Symbiotic State`) + 
+  labs(x = "Feeding Condition",
+       y = "Lighting Condition",
+       size = "Total Carbs (μg/mL) per Lacerate",
+       color = "Condition (Feeding, Symbiotic & Light)") +  # Updated legend title for Condition
+  
+   # Adjust the legend's point size and stroke thickness
+  guides(color = guide_legend(override.aes = list(size = 4, stroke = 2))) +  # Increased size and border thickness in the legend
+  
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),           # Increased base font size
+    axis.title = element_text(size = 18),     # Increased axis title font size
+    axis.text = element_text(size = 16),      # Increased axis text font size
+    legend.title = element_text(size = 16),   # Increased legend title font size
+    legend.text = element_text(size = 14),    # Increased legend text font size
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
+  ) +
+  expand_limits(y = 0)
+
+print(bubble_plot)
+
+# Save the plot with specified dimensions and resolution
+ggsave("bubble_plot.png", plot = bubble_plot, width = 10, height = 10, dpi = 300)
+
+
+bubble_plot <- ggplot(averages, aes(x = `Feeding Condition`, y = `Light Condition`, size = average_value)) +
+  geom_point(aes(color = combined_condition, 
+                 fill = ifelse(`Light Condition` == "Dark", combined_condition, "white"), 
+                 stroke = ifelse(`Light Condition` == "Light", 2.5, 1.5)),  # Thicker border for Light Condition
+             shape = 21) +  # shape = 21 allows for filled or empty points
+  scale_size_continuous(range = c(3, 10)) +
+  
+  # Use custom color palette for the combined condition
+  scale_color_manual(values = custom_colors) +
+  
+  # Ensure fill color for Dark is the same as the border, and Light is white
+  scale_fill_manual(values = custom_colors, guide = "none") +  # Remove Lighting Condition legend
+  
+  facet_grid(. ~ `Symbiotic State`) + 
+  labs(x = "Feeding Condition",
+       y = "Lighting Condition",
+       size = "Total Carbs (μg/mL) per Lacerate",
+       color = "Condition (Feeding, Symbiotic & Light)") +  # Updated legend title for Condition
+  
+   # Adjust the legend's point size and customize shapes for Light/Dark in the legend
+  guides(color = guide_legend(override.aes = list(
+    size = 4, 
+    stroke = c(2.5, 1.5),                         # Thicker border for Light, thinner for Dark
+    fill = custom_colors                           # Uses only colors from custom_colors
+  ))) +
+  
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),           # Increased base font size
+    axis.title = element_text(size = 18),     # Increased axis title font size
+    axis.text = element_text(size = 16),      # Increased axis text font size
+    legend.title = element_text(size = 16),   # Increased legend title font size
+    legend.text = element_text(size = 14),    # Increased legend text font size
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
+  ) +
+  expand_limits(y = 0)
+
+```
+
+statistics for carb data
+```{r}
+averages <- Feeding_Regimen_111_2 %>%
+  group_by(`Feeding Condition`, `Light Condition`, `Symbiotic State`) %>%
+  summarise(average_value = mean(`Total Carbs (ug/mL) perLacerate`))
+averages
+
+averages <- Feeding_Regimen_111_2 %>%
+  group_by(Symbiotic_State) %>%
+  summarise(average_value = mean(`Total_Carbs_(ug/mL)_perLacerate`))
+averages
+print(averages)
+# Assuming 'data' is your data frame
+library(stats)
+
+# Assuming your dataframe is named Feeding_Regimen_111_2
+# Replace spaces with underscores for easier reference
+Feeding_Regimen_111_2 <- read.csv("your_data.csv")  # Replace "your_data.csv" with the actual file path or URL
+print(colnames(Feeding_Regimen_111_2))
+
+# Perform ANOVA
+anova_result <- aov(`Total Carbs (ug/mL) perLacerate` ~ `Feeding Condition` * `Light Condition` * `Symbiotic State`, data = Feeding_Regimen_111_2)
+
+anova_result <- aov(`Total Carbs (ug/mL) perLacerate` ~ Group, data = Feeding_Regimen_111_2)
+summary(anova_result)
+# Display ANOVA results
+print(summary(anova_result))
+
+# Perform Tukey post-hoc test. Need to alter the naming method to put group names into one column instead of three
+# Assuming your data frame is named 'Feeding_Regimen_111_2'
+
+# Assuming your data frame is named 'Feeding_Regimen_111_2'
+
+# Load necessary libraries
+library(TukeyC)
+
+# Clean up column names
+clean_colnames <- make.names(colnames(Feeding_Regimen_111_2))
+colnames(Feeding_Regimen_111_2) <- clean_colnames
+
+# Perform ANOVA
+anova_result <- aov(Feeding_Regimen_111_2$`Total_Carbs_(ug/mL)_perLacerate` ~ Feeding_Regimen_111_2$Symbiotic_State)
+
+# Check ANOVA summary
+summary(anova_result)
+
+# Perform Tukey's HSD test
+tukey_result <- TukeyHSD(anova_result)
+
+# Check Tukey's HSD summary
+summary(tukey_result)
+tukey_result
+
+# kruskal and bonferroni
+library(readxl)
+Feeding_Regimen_111_2 <- read_excel("C:/Users/erick/OneDrive - Oregon State University/Desktop/Experiments/Nat vs. Art and Feeding Regimen 2023-24/Feeding Regimen 111-2.xlsx", 
+    sheet = "carbs")
+View(Feeding_Regimen_111_2)
+
+# Perform Kruskal-Wallis test
+kruskal_result <- kruskal.test(`Total Carbs (ug/mL) perLacerate` ~ `Group`, data = Feeding_Regimen_111_2)
+
+# Display the result
+kruskal_result
+
+# Perform pairwise comparisons with Bonferroni correction
+pairwise_comparisons <- pairwise.wilcox.test(Feeding_Regimen_111_2$`Total Carbs (ug/mL) perLacerate`, 
+                                             Feeding_Regimen_111_2$`Group`, 
+                                             p.adjust.method = "bonferroni")
+
+# Display the pairwise comparisons
+pairwise_comparisons
+```
+
+
+```{r}
+#averages for lipids
+averages2 <- Feeding_Regimen_111_2 %>%
+  group_by(`Feeding Condition`, `Light Condition`, `Symbiotic State`) %>%
+  summarise(average_value2 = mean(`Total Lipids (ug/mL) per Lacerate`))
+
+View(averages2)
+
+# heatmap of all lipid data
+ggplot(Feeding_Regimen_111_2, aes(x=`Light Condition`, y=`Feeding Condition`,  fill =`Total Lipids (ug/mL) per Lacerate`)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "purple") +
+  facet_grid(. ~ `Symbiotic State`) +  # Add facets based on Symbiotic_State
+  labs(title = "Heatmap of Total Lipids") +
+  theme_minimal()
+
+
+#boxplot of groups
+ggplot(Feeding_Regimen_111_2, aes(x = `Group`, y = `Total Lipids (ug/mL) per Lacerate`, fill = `Group`)) +
+  geom_boxplot() +
+  labs(x = "Sample Group", y = "Total Lipid concentration (ug/mL) per Lacerate") +
+   labs(fill = "Legend Title") +  # Add a legend title
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  expand_limits(y=0)
+
+
+
+# Now modify your ggplot code:
+bubble_plot <- ggplot(averages2, aes(x = `Feeding Condition`, y = `Light Condition`, size = average_value2)) +
+  geom_point(aes(color = `Symbiotic State`, fill = fill_color, alpha = `Feeding Condition`), 
+             shape = 21, stroke = 1.5) +  # stroke for outline thickness
+  scale_size_continuous(range = c(3, 10)) +
+  
+  # Set colors for symbiotic state outlines
+  scale_color_manual(values = c("Sym" = "orange", "Apo" = "pink")) +  
+  
+  # Now fill dark bubbles with symbiotic state color and light bubbles with white
+  scale_fill_manual(values = c("Sym" = "orange", "Apo" = "pink", "white" = "white")) +  
+  
+  # Adjust alpha levels for feeding condition to control transparency
+  scale_alpha_manual(values = c("Starved" = 0.4, "Fed" = 1.0)) +  
+  
+  facet_grid(. ~ `Symbiotic State`) + 
+  labs(x = "Feeding Condition",
+       y = "Lighting Condition",
+       size = "Total Lipids (μg/mL) per Lacerate",
+       alpha = "Feeding Condition") +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),           # Increased base font size
+    axis.title = element_text(size = 18),     # Increased axis title font size
+    axis.text = element_text(size = 16),      # Increased axis text font size
+    legend.title = element_text(size = 16),   # Increased legend title font size
+    legend.text = element_text(size = 14),    # Increased legend text font size
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
+  ) +
+  expand_limits(y = 0)
+
+# Create a new variable combining Feeding Condition, Symbiotic State, and Light Condition
+averages2$combined_condition <- with(averages2, paste(`Feeding Condition`, `Symbiotic State`, `Light Condition`, sep = "-"))
+
+# Define a custom color palette for each of the 8 groups
+custom_colors <- c(
+  "Fed-Sym-Dark" = "#FF7256",    #  Coral1 for Fed-Sym-Dark
+  "Fed-Sym-Light" = "#8B4500",   # Dark Orange4 for Fed-Sym-Light
+  "Starved-Sym-Dark" = "#FFA500",# Orange1 for Starved-Sym-Dark
+  "Starved-Sym-Light" = "#FF7F00",# Dark Orange1 for Starved-Sym-Light
+  "Fed-Apo-Dark" = "#FF82AB",    #palevioletred1  for Fed-Apo-Dark
+  "Fed-Apo-Light" = "#8B475D",   # palevioletred4 for Fed-Apo-Light
+  "Starved-Apo-Dark" = "#FFBBFF",#plum1  for Starved-Apo-Dark
+  "Starved-Apo-Light" = "#8B668B" #plum4  for Starved-Apo-Light
+)
+
+# Plot with adjusted border thickness for Light Condition
+bubble_plot2 <- ggplot(averages2, aes(x = `Feeding Condition`, y = `Light Condition`, size = average_value2)) +
+  geom_point(aes(color = combined_condition, 
+                 fill = ifelse(`Light Condition` == "Dark", combined_condition, "white"), 
+                 stroke = ifelse(`Light Condition` == "Light", 2.5, 1.5)),  # Thicker border for Light Condition
+             shape = 21) +  # shape = 21 allows for filled or empty points
+  scale_size_continuous(range = c(3, 10)) +
+  
+  # Use custom color palette for the combined condition
+  scale_color_manual(values = custom_colors) +
+  
+  # Ensure fill color for Dark is the same as the border, and Light is white
+  scale_fill_manual(values = c(custom_colors, "white" = "white")) +
+  
+  facet_grid(. ~ `Symbiotic State`) + 
+  labs(x = "Feeding Condition",
+       y = "Lighting Condition",
+       size = "Total Lipids (μg/mL) per Lacerate",
+       color = "Condition (Feeding, Symbiotic & Light)",
+       fill = "Lighting Condition") +  # Updated legend title
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),           # Increased base font size
+    axis.title = element_text(size = 18),     # Increased axis title font size
+    axis.text = element_text(size = 16),      # Increased axis text font size
+    legend.title = element_text(size = 16),   # Increased legend title font size
+    legend.text = element_text(size = 14),    # Increased legend text font size
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
+  ) +
+  expand_limits(y = 0)
+
+print(bubble_plot2)
+
+# Save the plot with specified dimensions and resolution
+ggsave("bubble_plot2.png", plot = bubble_plot2, width = 10, height = 10, dpi = 300)
+getwd()
+
+```
+
+statistics for lipids
+```{r}
+library(readxl)
+
+Feeding_Regimen_111_2 <- read_excel("C:/Users/erick/OneDrive - Oregon State University/Desktop/Experiments/Nat vs. Art and Feeding Regimen 2023-24/Feeding Regimen 111-2.xlsx", 
+    sheet = "lipids")
+View(Feeding_Regimen_111_2)
+
+averages2 <- Feeding_Regimen_111_2 %>%
+  group_by(`Feeding Condition`, `Light Condition`, `Symbiotic State`) %>%
+  summarise(average_value = mean(`Total Lipids (ug/mL) per Lacerate`))
+averages2
+
+averages2 <- Feeding_Regimen_111_2 %>%
+  group_by(`Symbiotic State`) %>%
+  summarise(average_value = mean(`Total Lipids (ug/mL) per Lacerate`))
+averages2
+
+anova_result2<-aov(`Total Lipids (ug/mL) per Lacerate`~`Feeding Condition`*`Light Condition`*`Symbiotic State`, data=Feeding_Regimen_111_2)
+anova_result2
+anova(anova_result2)
+
+anova_result2<-aov(`Total Lipids (ug/mL) per Lacerate`~ Group, data=Feeding_Regimen_111_2)
+anova_result2
+anova(anova_result2)
+
+# Perform Tukey's HSD test
+tukey_result <- TukeyHSD(anova_result2)
+
+# Check Tukey's HSD summary
+summary(tukey_result)
+tukey_result
+TukeyHSD(anova_result)
+
+# kruskal and bonferroni
+library(readxl)
+Feeding_Regimen_111_2 <- read_excel("C:/Users/erick/OneDrive - Oregon State University/Desktop/Experiments/Nat vs. Art and Feeding Regimen 2023-24/Feeding Regimen 111-2.xlsx", 
+    sheet = "lipids")
+View(Feeding_Regimen_111_2)
+
+# Perform Kruskal-Wallis test
+kruskal_result <- kruskal.test(`Total Lipids (ug/mL) per Lacerate` ~ `Group`, data = Feeding_Regimen_111_2)
+
+# Display the result
+kruskal_result
+
+# Perform pairwise comparisons with Bonferroni correction
+pairwise_comparisons <- pairwise.wilcox.test(Feeding_Regimen_111_2$`Total Lipids (ug/mL) per Lacerate`, 
+                                             Feeding_Regimen_111_2$`Group`, 
+                                             p.adjust.method = "bonferroni")
+
+# Display the pairwise comparisons
+pairwise_comparisons
+```
+
+protein analysis
+```{r}
+#averages for protein
+averages3 <- Feeding_Regimen_111_2 %>%
+  group_by(`Feeding Condition`, `Light Condition`, `Symbiotic State`) %>%
+  summarise(average_value3 = mean(`Total Host Protein (ug/mL) per lacerate`))
+averages3
+
+#heatmap of protein
+ggplot(Feeding_Regimen_111_2, aes(x=`Light Condition`, y=`Feeding Condition`,  fill =`Total Host Protein (ug/mL) per lacerate`)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "orange") +
+  facet_grid(. ~ `Symbiotic State`) +  # Add facets based on Symbiotic_State
+  labs(title = "Heatmap of Host Protein") +
+  theme_minimal()
+
+#boxplot of groups
+ggplot(Feeding_Regimen_111_2, aes(x = `Symbiotic State`, y = `Total Host Protein (ug/mL) per lacerate`, fill = `Symbiotic State`)) +
+  geom_boxplot() +
+  labs(x = "Sample Group", y = "Total Protein concentration (ug/mL) per Lacerate") +
+   labs(fill = "Legend Title") +  # Add a legend title
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  expand_limits(y=0)
+
+# Ensure Feeding Condition doesn't have any unintended N/A values (replace if necessary)
+averages3$`Feeding Condition` <- ifelse(is.na(averages$`Feeding Condition`), "Starved", averages3$`Feeding Condition`)
+
+# Create a new column in your data for the fill color based on Light Condition and Symbiotic State
+averages3$fill_color <- ifelse(averages$`Light Condition` == "Dark", averages3$`Symbiotic State`, "white")
+
+# Now modify your ggplot code:
+bubble_plot <- ggplot(averages3, aes(x = `Feeding Condition`, y = `Light Condition`, size = average_value3)) +
+  geom_point(aes(color = `Symbiotic State`, fill = fill_color, alpha = `Feeding Condition`), 
+             shape = 21, stroke = 1.5) +  # stroke for outline thickness
+  scale_size_continuous(range = c(3, 10)) +
+  
+  # Set colors for symbiotic state outlines
+  scale_color_manual(values = c("Sym" = "orange", "Apo" = "pink")) +  
+  
+  # Now fill dark bubbles with symbiotic state color and light bubbles with white
+  scale_fill_manual(values = c("Sym" = "orange", "Apo" = "pink", "white" = "white")) +  
+  
+  # Adjust alpha levels for feeding condition to control transparency
+  scale_alpha_manual(values = c("Starved" = 0.4, "Fed" = 1.0)) +  
+  
+  facet_grid(. ~ `Symbiotic State`) + 
+  labs(x = "Feeding Condition",
+       y = "Lighting Condition",
+       size = "Total Protein (μg/mL) per Lacerate",
+       alpha = "Feeding Condition") +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),           # Increased base font size
+    axis.title = element_text(size = 18),     # Increased axis title font size
+    axis.text = element_text(size = 16),      # Increased axis text font size
+    legend.title = element_text(size = 16),   # Increased legend title font size
+    legend.text = element_text(size = 14),    # Increased legend text font size
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
+  ) +
+  expand_limits(y = 0)
+
+# Save the plot with specified dimensions and resolution
+ggsave("bubble_plot.png", plot = bubble_plot, width = 10, height = 10, dpi = 300)
+
+print(bubble_plot)
+
+library(RColorBrewer)
+
+library(ggplot2)
+library(RColorBrewer)
+
+library(ggplot2)
+library(RColorBrewer)
+
+# Create a new variable combining Feeding Condition, Symbiotic State, and Light Condition
+averages3$combined_condition <- with(averages3, paste(`Symbiotic State`,`Feeding Condition`, `Light Condition`, sep = "-"))
+
+# Define a custom color palette for each of the 8 groups
+custom_colors <- c(
+  "Sym-Fed-Dark" = "#FF7256",    #  Coral1 for Fed-Sym-Dark
+  "Sym-Fed-Light" = "#8B4500",   # Dark Orange4 for Fed-Sym-Light
+  "Sym-Starved-Dark" = "#FFA500",# Orange1 for Starved-Sym-Dark
+  "Sym-Starved-Light" = "#FF7F00",# Dark Orange1 for Starved-Sym-Light
+  "Apo-Fed-Dark" = "#FF82AB",    #palevioletred1  for Fed-Apo-Dark
+  "Apo-Starved-Light" = "#8B475D",   # palevioletred4 for Fed-Apo-Light
+  "Apo-Starved-Dark" = "#FFBBFF",#plum1  for Starved-Apo-Dark
+  "Apo-Starved-Light" = "#8B668B" #plum4  for Starved-Apo-Light
+)
+
+# Plot with adjusted legend and filled condition bubbles in the legend
+bubble_plot3 <- ggplot(averages3, aes(x = `Feeding Condition`, y = `Light Condition`, size = average_value3)) +
+  geom_point(aes(color = combined_condition, 
+                 fill = ifelse(`Light Condition` == "Dark", combined_condition, "white"), 
+                 stroke = ifelse(`Light Condition` == "Light", 2.5, 1.5)),  # Thicker border for Light Condition
+             shape = 21) +  # shape = 21 allows for filled or empty points
+  scale_size_continuous(range = c(3, 10)) +
+  
+  # Use custom color palette for the combined condition
+  scale_color_manual(values = custom_colors) +
+  
+  # Ensure fill color for Dark is the same as the border, and Light is white
+  scale_fill_manual(values = c(custom_colors, "white" = "white"), guide = "none") +  # Remove Lighting Condition legend
+  
+  facet_grid(. ~ `Symbiotic State`) + 
+  labs(x = "Feeding Condition",
+       y = "Lighting Condition",
+       size = "Total Protein (μg/mL) per Lacerate",
+       color = "Condition (Symbiotic, Feeding, & Light)") +  # Updated legend title for Condition
+  
+   # Adjust the legend's point size and stroke thickness
+  guides(color = guide_legend(override.aes = list(size = 4, stroke = 2))) +  # Increased size and border thickness in the legend
+  
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),           # Increased base font size
+    axis.title = element_text(size = 18),     # Increased axis title font size
+    axis.text = element_text(size = 16),      # Increased axis text font size
+    legend.title = element_text(size = 16),   # Increased legend title font size
+    legend.text = element_text(size = 14),    # Increased legend text font size
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
+  ) +
+  expand_limits(y = 0)
+
+# Print the plot
+print(bubble_plot3)
+
+
+
+# Save the plot with specified dimensions and resolution
+ggsave("bubble_plot3.png", plot = bubble_plot3, width = 10, height = 10, dpi = 300)
+```
+
+```{r}
+library(readxl)
+Feeding_Regimen_111_2 <- read_excel("C:/Users/erick/OneDrive - Oregon State University/Desktop/Experiments/Nat vs. Art and Feeding Regimen 2023-24/Feeding Regimen 111-2.xlsx", 
+    sheet = "protein")
+View(Feeding_Regimen_111_2)
+anova_result3<-aov(`Total Host Protein (ug/mL) per lacerate`~Group, data=Feeding_Regimen_111_2)
+anova_result3
+anova(anova_result3)
+
+#total stats
+anova_result4<- aov(`Total Host Protein (ug/mL) per lacerate` ~ `Feeding Condition` * `Light Condition` * `Symbiotic State`, data = Feeding_Regimen_111_2)
+
+anova_result <- aov(`Total Carbs (ug/mL) perLacerate` ~ Group, data = Feeding_Regimen_111_2)
+summary(anova_result4)
+
+# Perform Tukey's HSD test
+tukey_result <- TukeyHSD(anova_result3)
+
+# Check Tukey's HSD summary
+summary(tukey_result)
+tukey_result
+TukeyHSD(anova_result)
+
+# kruskal and bonferroni
+library(readxl)
+Feeding_Regimen_111_2 <- read_excel("C:/Users/erick/OneDrive - Oregon State University/Desktop/Experiments/Nat vs. Art and Feeding Regimen 2023-24/Feeding Regimen 111-2.xlsx", 
+    sheet = "protein")
+View(Feeding_Regimen_111_2)
+
+# Perform Kruskal-Wallis test
+kruskal_result <- kruskal.test(`Total Host Protein (ug/mL) per lacerate` ~ `Group`, data = Feeding_Regimen_111_2)
+
+# Display the result
+kruskal_result
+
+# Perform pairwise comparisons with Bonferroni correction
+pairwise_comparisons <- pairwise.wilcox.test(Feeding_Regimen_111_2$`Total Host Protein (ug/mL) per lacerate`, 
+                                             Feeding_Regimen_111_2$`Group`, 
+                                             p.adjust.method = "bonferroni")
+
+# Display the pairwise comparisons
+pairwise_comparisons
+```
+#combined bubble plots
+```{r}
+library(ggplot2)
+library(patchwork)
+
+# Add Type column to each dataset
+averages$Type <- "Carbohydrates"
+averages2$Type <- "Lipids"
+averages3$Type <- "Proteins"
+
+# Combine the plots using patchwork with adjusted layout
+combined_plot <- (bubble_plot / bubble_plot2 / bubble_plot3) +
+  plot_layout(guides = 'collect') &
+  theme(legend.position = 'bottom')
+
+# Adjust legend order and title
+combined_plot <- combined_plot +
+  guides(color = guide_legend(title = "Measurement Type", order = 1))
+
+# Display the combined plot
+print(combined_plot)
+
+# Save the combined plot with specified dimensions
+ggsave("combined_plot.png", combined_plot, width = 20, height = 60, limitsize=FALSE)
+
+# Read and display the saved image
+img <- image_read("combined_plot.png")
+print(img)
+
+library(gridExtra)
+library(grid)
+library(gtable)
+g <- rbind(bubble_plot, bubble_plot2, bubble_plot3)
+g$widths <- unit.pmax(g2$widths, g3$widths)
+grid.draw(g)
+```
+
+
+algae data
+```{r}
+# Create a scatter plot with algae data
+library(readxl)
+Feeding_Regimen_111_2 <- read_excel("C:/Users/erick/OneDrive - Oregon State University/Desktop/Experiments/Nat vs. Art and Feeding Regimen 2023-24/Feeding Regimen 111-2.xlsx", 
+    sheet = "total energy reserves")
+View(Feeding_Regimen_111_2)
+Feeding_Regimen_111_2
+
+ggplot(Feeding_Regimen_111_2, aes(x=`Feeding Condition`, y=`Algae per Lacerate`, fill=`Light Condition`))+
+  geom_boxplot() +
+  labs(x = "Feeding Condition", y = "Algae per Lacerate") +
+  scale_fill_manual(values = c("Light" = "orange", "Dark" = "gray")) +
+  labs(fill = "Legend Title") +  # Add a legend title
+  theme_minimal() +
+  expand_limits(y=0)
+
+#boxplot with dots visible
+ggplot(Feeding_Regimen_111_2, aes(x = `Feeding Condition`, y = `Algae per Lacerate`, color = `Light Condition`)) +
+  geom_boxplot(fill = "white", alpha = 0) +  # Set fill to "white" and make it transparent
+  geom_point(position = position_jitterdodge(dodge.width = 0.75, jitter.width = 0.1), alpha = 0.5) +  # Adjust jitter
+  scale_color_manual(values=c("Light" = "orange", "Dark" = "gray")) +
+  labs(x = "Type of Lacerate", y = "Algae per Lacerate") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  expand_limits(y=0)
+
+# Plot scatter plot
+ggplot(Feeding_Regimen_111_2, aes(x = `Feeding Condition`, y = `Algae per Lacerate`, color = `Light Condition`))+
+  geom_point(position = position_dodge(width = 1.0), alpha = 1.0) +
+  scale_color_manual(values=c("Light" = "red", "Dark" = "black")) +
+  labs(x = "Feeding Condition", y = "Algae per Lacerate", color = "Lighting Condition") +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  expand_limits(y = 0)
+
+
+# Create a new variable combining Feeding Condition, Symbiotic State, and Light Condition
+averages3$combined_condition <- with(averages3, paste(`Feeding Condition`, `Symbiotic State`, `Light Condition`, sep = "-"))
+
+# Define a custom color palette for each of the 8 groups
+custom_colors <- c(
+  "Fed-Sym-Dark" = "#FF7256",    #  Coral1 for Fed-Sym-Dark
+  "Fed-Sym-Light" = "#8B4500",   # Dark Orange4 for Fed-Sym-Light
+  "Starved-Sym-Dark" = "#FFA500",# Orange1 for Starved-Sym-Dark
+  "Starved-Sym-Light" = "#FF7F00",# Dark Orange1 for Starved-Sym-Light
+  "Fed-Apo-Dark" = "#FF82AB",    #palevioletred1  for Fed-Apo-Dark
+  "Fed-Apo-Light" = "#8B475D",   # palevioletred4 for Fed-Apo-Light
+  "Starved-Apo-Dark" = "#FFBBFF",#plum1  for Starved-Apo-Dark
+  "Starved-Apo-Light" = "#8B668B" #plum4  for Starved-Apo-Light
+)
+
+#new plot with big lines and bubbles
+# Updated plot with customized colors for each group
+ggplot(Feeding_Regimen_111_2, 
+       aes(x = `Feeding Condition`, 
+           y = `Algae per Lacerate`, 
+           color = interaction(`Feeding Condition`, `Light Condition`, sep = "-"),  # Interaction of Feeding and Light Condition for custom colors
+           group = interaction(`Feeding Condition`, `Light Condition`, sep = "-"))) +  # Grouping based on both factors
+  geom_point(position = position_dodge(width = 1.0), alpha = 1.0, size = 5) +  # Increased size of points
+  stat_summary(
+    fun = mean, 
+    geom = "crossbar", 
+    position = position_dodge(width = 1.0), 
+    width = 0.6, 
+    aes(ymax = ..y.., ymin = ..y..),
+    color = "black", 
+    size = 0.5
+  ) +  # Add mean lines
+  
+  # Customize colors for each of the four groups
+  scale_color_manual(values = c(
+    "Fed-Dark" = "#FF7256",      # Fed in Dark
+    "Fed-Light" =  "#8B4500",    # Fed in Light
+    "Starved-Dark" = "#FFA500",# Starved in Dark
+    "Starved-Light" = "#FF7F00" # Starved in Light
+  )) +
+  
+  labs(x = "Feeding Condition", 
+       y = "Algae per Lacerate", 
+       color = "Condition (Feeding & Light)") +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    text = element_text(size = 11),           # Increased base font size
+    axis.title = element_text(size = 13),     # Increased axis title font size
+    axis.text = element_text(size = 11),      # Increased axis text font size
+    legend.title = element_text(size = 11),   # Increased legend title font size
+    legend.text = element_text(size = 9)      # Increased legend text font size
+  ) +
+  expand_limits(y = 0)
+
+
+```
+
+
+#stats on algae
+```{r}
+anova_result5<- aov(`Algae per Lacerate` ~ `Feeding Condition` * `Light Condition`, data = Feeding_Regimen_111_2)
+
+summary(anova_result5)
+
+TukeyHSD(anova_result4)
+
+# kruskal and bonferroni
+library(readxl)
+Feeding_Regimen_111_2 <- read_excel("C:/Users/erick/OneDrive - Oregon State University/Desktop/Experiments/Nat vs. Art and Feeding Regimen 2023-24/Feeding Regimen 111-2.xlsx", 
+    sheet = "algae")
+View(Feeding_Regimen_111_2)
+
+# Perform Kruskal-Wallis test
+kruskal_result <- kruskal.test(`Algae per Lacerate` ~ `Group`, data = Feeding_Regimen_111_2)
+
+# Display the result
+kruskal_result
+
+# Perform pairwise comparisons with Bonferroni correction
+pairwise_comparisons <- pairwise.wilcox.test(Feeding_Regimen_111_2$`Algae per Lacerate`, 
+                                             Feeding_Regimen_111_2$`Group`, 
+                                             p.adjust.method = "bonferroni")
+
+# Display the pairwise comparisons
+pairwise_comparisons
+```
+
+carb data based on algae
+```{r}
+ggplot(Feeding_Regimen_111_2, aes(x = `Algae per Lacerate`, y = `Total Carbs (ug/mL) perLacerate`, color = `Feeding Condition`, linetype=`Light Condition`)) +
+   geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+stats for algae and carb data
+```{r}
+Carbs<-lm(`Total Carbs (ug/mL) perLacerate`~ `Algae per Lacerate`*`Feeding Condition`*`Light Condition`, data=Feeding_Regimen_111_2)
+summary(Carbs)
+```
+
+```{r}
+ggplot(Feeding_Regimen_111_2, aes(x = `Algae per Lacerate`, y = `Total Lipids (ug/mL) per Lacerate`, color = `Feeding Condition`, linetype=`Light Condition`)) +
+   geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+```{r}
+Lipids<-lm(`Total Lipids (ug/mL) per Lacerate`~ `Algae per Lacerate`*`Feeding Condition`*`Light Condition`, data=Feeding_Regimen_111_2)
+summary(Lipids)
+```
+```{r}
+ggplot(Feeding_Regimen_111_2, aes(x = `Algae per Lacerate`, y = `Total Host Protein (ug/mL) per lacerate`, color = `Feeding Condition`, linetype=`Light Condition`)) +
+   geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+```{r}
+Protein<-lm(`Total Host Protein (ug/mL) per lacerate`~ `Algae per Lacerate`*`Feeding Condition`*`Light Condition`, data=Feeding_Regimen_111_2)
+summary(Protein)
+```
+
+
+pedal disk size data
+```{r}
+
+# Install and load the tidyverse package if not already installed
+# install.packages("tidyverse")
+library(tidyverse)
+
+
+library(readxl)
+Feeding_Regimen_111_2 <- read_excel("C:/Users/erick/OneDrive - Oregon State University/Desktop/Experiments/Nat vs. Art and Feeding Regimen 2023-24/Feeding Regimen 111-2.xlsx", 
+    sheet = "Pedal disk size 2")
+attach(Feeding_Regimen_111_2)
+View(Feeding_Regimen_111_2)
+
+#averages
+averages <- Feeding_Regimen_111_2 %>%
+  group_by(`Feeding Condition`, `Light Condition`, `Symbiotic State`) %>%
+  summarise(average_value = mean(`Total Carbs (ug/mL) perLacerate`))
+averages
+
+# Assuming your data frame is named 'Feeding_Regimen_111_2'
+df_long <- Feeding_Regimen_111_2 %>%
+  gather(key = "Measurement_Type", value = "Pedal_Disk_Area", `Pedal Disk area Day 0`, `Pedal Disk area Day 31`)
+View(df_long)
+
+# Plot boxplots using ggplot2
+ggplot(df_long, aes(x = Group, y = Pedal_Disk_Area, fill = Measurement_Type)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Before and After Measurements by Experimental Group",
+       x = "Experimental Group",
+       y = "Pedal Disk Area (um^2)",
+       fill = "Measurement Type") +
+  scale_fill_manual(values = c("Before_Area" = "blue", "After_Area" = "orange")) +
+  theme_minimal()
+
+
+#new plot
+ggplot(df_long, aes(x = Group, y = Pedal_Disk_Area, fill = Measurement_Type, color = Measurement_Type)) +
+  geom_boxplot(fill = "white", alpha = 0) +  # Remove outliers for clarity
+  geom_jitter(position = position_jitterdodge(dodge.width = 0.75, jitter.width = 0.1), alpha = 0.5) +  # Add jittered points
+  labs(x = "Experimental Group",
+       y = "Pedal Disk Area in µm²",
+       fill = "Measurement Timepoint",
+       color = "Measurement Timepoint") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  expand_limits(y=0)
+
+# boxplot with faceting and rearrangements
+library(ggplot2)
+library(dplyr)
+
+# Assuming df_long is your data frame
+
+library(ggplot2)
+library(dplyr)
+
+# Assuming df_long is your data frame
+
+library(ggplot2)
+library(dplyr)
+
+# Assuming df_long is your data frame
+
+library(ggplot2)
+library(dplyr)
+
+# Assuming df_long is your data frame
+
+library(ggplot2)
+library(dplyr)
+
+# Assuming df_long is your data frame
+
+# Load necessary libraries
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Convert Group to character, create Group_Type, and set the order for Group_Type
+df_long <- df_long %>%
+  mutate(Group = as.character(Group),
+         Group_Type = ifelse(startsWith(Group, "S"), "S Groups", "A Groups"),
+         Group_Type = factor(Group_Type, levels = c("S Groups", "A Groups")), # Ensure S Groups is on top
+         Group = factor(Group, levels = c("SFL", "SFD", "SSL", "SSD", "AFL", "AFD", "ASL", "ASD")))
+
+# Define custom colors for the groups
+custom_colors <- c(
+  "SFL" = "#8B4500", "SFD" = "#FF7256", "SSL" = "#FF7F00", "SSD" = "#FFA500",
+  "AFL" = "#8B475D", "AFD" = "#FF82AB", "ASL" = "#8B668B", "ASD" = "#FFBBFF"
+)
+
+# Update the plot
+ggplot(df_long, aes(x = Measurement_Type, y = Pedal_Disk_Area, fill = Group, color = Group)) +
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) +  # Use alpha to adjust boxplot transparency, remove outliers
+  geom_jitter(position = position_jitterdodge(dodge.width = 0.75, jitter.width = 0.1), alpha = 0.5) +  # Add jittered points
+  labs(x = "Measurement Timepoint",
+       y = "Pedal Disk Area in µm²",
+       fill = "Experimental Group",
+       color = "Experimental Group") +
+  scale_fill_manual(values = custom_colors) +  # Apply custom colors for fill
+  scale_color_manual(values = custom_colors) + # Apply custom colors for color
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    strip.text = element_blank(),  # Remove facet titles
+    text = element_text(size = 14),           # Increased base font size
+    axis.title = element_text(size = 16),     # Increased axis title font size
+    axis.text = element_text(size = 14),      # Increased axis text font size
+    legend.title = element_text(size = 14),   # Increased legend title font size
+    legend.text = element_text(size = 12)     # Increased legend text font size
+  ) +
+  expand_limits(y = 0) +
+  facet_wrap(~ Group_Type, ncol = 1, scales = "free_x")
+
+
+```
+
+stats
+
+```{r}
+# Assuming your data frame is named 'Feeding_Regimen_111_2'
+# Install and load the dplyr package if not already installed
+# install.packages("dplyr")
+library(dplyr)
+
+# Perform paired t-test for each group
+t_test_results <- Feeding_Regimen_111_2 %>%
+  group_by(`Group`) %>%
+  summarise(paired_t_test_result = list(t.test(`Pedal Disk area um beginning`, `Pedal Disk area um end`, paired = TRUE)))
+
+# Extract relevant information from the results
+t_test_summary <- t_test_results %>%
+  mutate(
+    group = `Group`,
+    p_value = map_dbl(paired_t_test_result, "p.value"),
+    mean_difference = map_dbl(paired_t_test_result, "estimate")
+  ) %>%
+  select(group, p_value, mean_difference)
+
+# Print the summary
+print(t_test_summary)
+#without outliers in AFD
+
+# Assuming t_test_results is a data frame with the necessary data
+wilcoxon_test_results <- t_test_results %>%
+  mutate(
+    group = `Group`,
+    wilcoxon_result = map2(`SFL`, `SFD`, `SSL`, `SSD`, `AFL`, `AFD`, `ASL`, `ASD`,~wilcox.test(.x, .y, paired = TRUE)),
+    p_value = map_dbl(wilcoxon_result, "p.value"),
+    median_difference = map_dbl(wilcoxon_result, ~median(.x - .y))
+  ) %>%
+  select(group, p_value, median_difference)
+
+```
+
+```{r}
+citation()
+citation("car")
+citation("stats")
+citation("ggplot2")
+
+```
+
